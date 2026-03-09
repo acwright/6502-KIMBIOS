@@ -102,7 +102,7 @@ Current file: BIOS.asm
 000000r 2               STP_CTRL_SLOW_CLK   := %00000010
 000000r 2               STP_CTRL_SELECT     := %00000001
 000000r 2               
-000000r 2               ; Serial Card | IO 5 | $9000-$9003
+000000r 2               ; Serial Card / Serial Card Pro | IO 5 | $9000-$9003
 000000r 2               SC_DATA             := $9000             ; R/W
 000000r 2               SC_RESET            := $9001             ; Write
 000000r 2               SC_STATUS           := $9001             ; Read
@@ -361,12 +361,10 @@ Current file: BIOS.asm
 000055r 2  20 rr rr       jsr LCD_INSTRUCTION
 000058r 2  A9 06          lda #%00000110                ; Increment and shift cursor; don't shift display
 00005Ar 2  20 rr rr       jsr LCD_INSTRUCTION
-00005Dr 2               
 00005Dr 2  A9 82          lda #%10000010                ; Enable IRQ on CA1
 00005Fr 2  8D 0E 9C       sta LCD_IER
 000062r 2  A9 0D          lda #%00001101                ; Set CA2 to LOW output, CA1 to positive edge
 000064r 2  8D 0C 9C       sta LCD_PCR
-000067r 2               
 000067r 2  60             rts
 000068r 2               
 000068r 2               ; Initialize the serial output
@@ -374,7 +372,7 @@ Current file: BIOS.asm
 000068r 2               INIT_SC:
 000068r 2  A9 1F          lda     #$1F                  ; 8-N-1, 19200 baud
 00006Ar 2  8D 03 90       sta     SC_CTRL
-00006Dr 2  A9 09          lda     #$09                  ; No parity, no echo, tx interrupts disabled, rx interrupts enabled
+00006Dr 2  A9 09          lda     #$09                  ; No parity, no echo, RTSB low, TX interrupts disabled, RX interrupts enabled
 00006Fr 2  8D 02 90       sta     SC_CMD
 000072r 2  60             rts
 000073r 2               
@@ -417,194 +415,210 @@ Current file: BIOS.asm
 000090r 2               CHRIN:
 000090r 2  DA             phx
 000091r 2  20 rr rr       jsr BUFFER_SIZE               ; Check for character available
-000094r 2  F0 09          beq @CHRIN_NO_CHAR            ; Branch if no character available
+000094r 2  F0 1E          beq @CHRIN_NO_CHAR            ; Branch if no character available
 000096r 2  20 rr rr       jsr READ_BUFFER               ; Read the character from the buffer
 000099r 2  20 rr rr       jsr CHROUT                    ; Echo
-00009Cr 2  FA             plx
-00009Dr 2  38             sec
-00009Er 2  60             rts
-00009Fr 2               @CHRIN_NO_CHAR:
-00009Fr 2  FA             plx
-0000A0r 2  18             clc
-0000A1r 2  60             rts
-0000A2r 2               
-0000A2r 2               ; Output a character from the A register to the Serial Card
-0000A2r 2               ; Modifies: Flags
-0000A2r 2               CHROUT:
-0000A2r 2  8D 00 90       sta SC_DATA
-0000A5r 2  48             pha
-0000A6r 2               @CHROUT_WAIT:
-0000A6r 2  AD 01 90       lda SC_STATUS
-0000A9r 2  29 10          and #SC_STATUS_TDRE           ; Check if TX buffer not empty
-0000ABr 2  F0 F9          beq @CHROUT_WAIT              ; Loop if TX buffer not empty
-0000ADr 2  68             pla
-0000AEr 2  60             rts
-0000AFr 2               
-0000AFr 2               ; Send instruction in A register to LCD
-0000AFr 2               ; Modifies: Flags
-0000AFr 2               LCD_INSTRUCTION:
-0000AFr 2  48             pha
-0000B0r 2  20 rr rr       jsr LCD_WAIT
-0000B3r 2  8D 00 9C       sta LCD_PORTB
-0000B6r 2  A9 00          lda #0                        ; Clear RS/RW/E bits
-0000B8r 2  8D 01 9C       sta LCD_PORTA
-0000BBr 2  A9 80          lda #LCD_E                    ; Set E bit to send instruction
-0000BDr 2  8D 01 9C       sta LCD_PORTA
-0000C0r 2  A9 00          lda #0                        ; Clear RS/RW/E bits
-0000C2r 2  8D 01 9C       sta LCD_PORTA
-0000C5r 2  68             pla
-0000C6r 2  60             rts
-0000C7r 2               
-0000C7r 2               ; Wait for LCD busy flag to clear
-0000C7r 2               ; Modifies: Flags
-0000C7r 2               LCD_WAIT:
-0000C7r 2  48             pha
-0000C8r 2  A9 00          lda #$00                      ; Port B is input
-0000CAr 2  8D 02 9C       sta LCD_DDRB
-0000CDr 2               @LCD_WAIT_BUSY:
-0000CDr 2  A9 40          lda #LCD_RW
-0000CFr 2  8D 01 9C       sta LCD_PORTA
-0000D2r 2  A9 C0          lda #(LCD_RW | LCD_E)
-0000D4r 2  8D 01 9C       sta LCD_PORTA
-0000D7r 2  AD 00 9C       lda LCD_PORTB
-0000DAr 2  29 80          and #$80                      ; Check the busy flag
-0000DCr 2  D0 EF          bne @LCD_WAIT_BUSY
-0000DEr 2               @LCD_WAIT_EXIT:
-0000DEr 2  A9 40          lda #LCD_RW
-0000E0r 2  8D 01 9C       sta LCD_PORTA
-0000E3r 2  A9 FF          lda #$FF                      ; Port B is output
-0000E5r 2  8D 02 9C       sta LCD_DDRB
-0000E8r 2  68             pla
-0000E9r 2  60             rts
-0000EAr 2               
-0000EAr 2               ; Clear the LCD display and return cursor to home
-0000EAr 2               ; Modifies: Flags
-0000EAr 2               LCD_CLEAR:
-0000EAr 2  48             pha
-0000EBr 2  A9 01          lda #$01                      ; Clear display
-0000EDr 2  20 rr rr       jsr LCD_INSTRUCTION
-0000F0r 2  A9 80          lda #$80                      ; Return cursor to home
-0000F2r 2  20 rr rr       jsr LCD_INSTRUCTION
-0000F5r 2  68             pla
-0000F6r 2  60             rts
-0000F7r 2               
-0000F7r 2               ; Outputs character from the A register to LCD at cursor position
-0000F7r 2               ; Modifies: Flags
-0000F7r 2               LCD_CHROUT:
-0000F7r 2  48             pha
-0000F8r 2  20 rr rr       jsr LCD_WAIT
-0000FBr 2  8D 00 9C       sta LCD_PORTB
-0000FEr 2  A9 20          lda #LCD_RS                   ; Set RS; Clear RW/E bits
-000100r 2  8D 01 9C       sta LCD_PORTA
-000103r 2  A9 A0          lda #(LCD_RS | LCD_E)         ; Set E bit to send instruction
-000105r 2  8D 01 9C       sta LCD_PORTA
-000108r 2  A9 20          lda #LCD_RS                   ; Clear E bits
-00010Ar 2  8D 01 9C       sta LCD_PORTA
-00010Dr 2  68             pla
-00010Er 2  60             rts
-00010Fr 2               
-00010Fr 2               ; Outputs string pointed to with STR_PTR to LCD at cursor position
-00010Fr 2               ; Modifies: Flags
-00010Fr 2               LCD_PRINT:
-00010Fr 2  48             pha                           ; Save A, Y to stack
-000110r 2  98             tya
-000111r 2  48             pha
-000112r 2  A0 00          ldy #$00
-000114r 2               @LCD_PRINT_LOOP:
-000114r 2  B1 02          lda (STR_PTR),y               ; Load next character at location pointed to by STR_PTR offset by Y
-000116r 2  F0 06          beq @LCD_PRINT_EXIT
-000118r 2  20 rr rr       jsr LCD_CHROUT
-00011Br 2  C8             iny
-00011Cr 2  D0 F6          bne @LCD_PRINT_LOOP
-00011Er 2               @LCD_PRINT_EXIT:
-00011Er 2  68             pla                           ; Restore A, Y
-00011Fr 2  A8             tay
-000120r 2  68             pla
-000121r 2  60             rts
-000122r 2               
-000122r 2               ; Sets the LCD cursor position using the value in A register
-000122r 2               ; Input: Accumulator = desired DDRAM address (e.g., $00-$0F for row 1, $40-$4F for row 2)
-000122r 2               ; Modifies: Flags
-000122r 2               LCD_PLOT:
-000122r 2  09 80          ora #%10000000                ; Set bit 7 to make it a "Set DDRAM Address" command ($80)
-000124r 2  20 rr rr       jsr LCD_INSTRUCTION           ; Send command
-000127r 2  20 rr rr       jsr LCD_WAIT                  ; Wait for busy flag (recommended)
-00012Ar 2  60             rts
-00012Br 2               
-00012Br 2               ; Convert value in A register to two byte HEX value as ASCII and write to INPUT_BUFFER
-00012Br 2               ; Modifies: Flags, Y
-00012Br 2               HEX_TO_ASCII:
-00012Br 2  48             pha                           ; Save original A value
-00012Cr 2  4A             lsr                           ; Shift high nibble into low nibble
-00012Dr 2  4A             lsr
-00012Er 2  4A             lsr
-00012Fr 2  4A             lsr
-000130r 2  A8             tay
-000131r 2  B9 rr rr       lda HEX_ASCII,y               ; Convert to ASCII
-000134r 2  20 rr rr       jsr WRITE_BUFFER              ; Write to INPUT_BUFFER
-000137r 2  68             pla                           ; Restore original A value
-000138r 2  48             pha
-000139r 2  29 0F          and #$0F                      ; Mask low nibble
-00013Br 2  A8             tay
-00013Cr 2  B9 rr rr       lda HEX_ASCII,y               ; Convert to ASCII
-00013Fr 2  20 rr rr       jsr WRITE_BUFFER              ; Write to INPUT_BUFFER
-000142r 2  68             pla
-000143r 2  60             rts
-000144r 2               
-000144r 2               ; NMI Handler
-000144r 2               NMI:
-000144r 2  40             rti
-000145r 2               
-000145r 2               ; IRQ Handler
-000145r 2               IRQ:
-000145r 2  48             pha
-000146r 2  5A             phy
-000147r 2  DA             phx
-000148r 2               @IRQ_SC:
-000148r 2  AD 01 90       lda SC_STATUS
-00014Br 2  29 80          and #SC_STATUS_IRQ            ; Check if serial data caused the interrupt
-00014Dr 2  F0 06          beq @IRQ_LCD                  ; If not, continue
-00014Fr 2  AD 00 90       lda SC_DATA                   ; Read the data from serial register
-000152r 2  20 rr rr       jsr WRITE_BUFFER              ; Store to the input buffer
-000155r 2               @IRQ_LCD:
-000155r 2  AD 0D 9C       lda LCD_IFR
-000158r 2  29 02          and #%00000010                ; Check if CA1 caused the interrupt
-00015Ar 2  F0 07          beq @IRQ_EXIT                 ; If not, exit
-00015Cr 2  AD 01 9C       lda LCD_PORTA                 ; Read the data from VIA PORTA
-00015Fr 2  29 1F          and #%00011111                ; Mask off the lower five bits to read keypad data
-000161r 2  85 0F          sta KEYPAD_IN                 ; Store to the zero page for now
-000163r 2               @IRQ_EXIT:
-000163r 2  FA             plx
-000164r 2  7A             ply
-000165r 2  68             pla
-000166r 2  40             rti
-000167r 2               
-000167r 2               ; NMI Vector
-000167r 2               NMI_VEC:
-000167r 2  6C 04 03       jmp (NMI_PTR)                 ; Indirect jump through NMI pointer to the NMI handler
-00016Ar 2               
-00016Ar 2               ; Reset Vector
-00016Ar 2               RESET_VEC:
-00016Ar 2  4C rr rr       jmp RESET                     ; Initialize the system
-00016Dr 2               
-00016Dr 2               ; IRQ Vector
-00016Dr 2               IRQ_VEC:
-00016Dr 2  6C 00 03       jmp (IRQ_PTR)                 ; Indirect jump through IRQ pointer to the IRQ handler
-000170r 2               
-000170r 2               ; HEX to ASCII conversion lookup table
-000170r 2  30 31 32 33  HEX_ASCII: .asciiz "0123456789ABCDEF"
-000174r 2  34 35 36 37  
-000178r 2  38 39 41 42  
-000181r 2               
-000181r 2               ; Banner message
-000181r 2  2D 2D 20 54  BANNER_ROW_1: .asciiz "-- THE 'KIM' -- "
-000185r 2  48 45 20 27  
-000189r 2  4B 49 4D 27  
-000192r 2  20 28 45 53  BANNER_ROW_2: .asciiz " (ESC) FOR MON  "
-000196r 2  43 29 20 46  
-00019Ar 2  4F 52 20 4D  
-0001A3r 2               
-0001A3r 1               .segment "CART"
+00009Cr 2  48             pha
+00009Dr 2  20 rr rr       jsr BUFFER_SIZE
+0000A0r 2  C9 B0          cmp #$B0                      ; Check if buffer is mostly full
+0000A2r 2  90 07          bcc @CHRIN_NOT_FULL           ; Branch if buffer size < $B0
+0000A4r 2  A9 01          lda #$01                      ; No parity, no echo, RTSB high, TX interrupts disabled, RX interrupts enabled
+0000A6r 2  8D 02 90       sta SC_CMD
+0000A9r 2  80 05          bra @CHRIN_EXIT
+0000ABr 2               @CHRIN_NOT_FULL:
+0000ABr 2  A9 09          lda #$09                      ; No parity, no echo, RTSB low, TX interrupts disabled, RX interrupts enabled
+0000ADr 2  8D 02 90       sta SC_CMD
+0000B0r 2               @CHRIN_EXIT:
+0000B0r 2  68             pla
+0000B1r 2  FA             plx
+0000B2r 2  38             sec
+0000B3r 2  60             rts
+0000B4r 2               @CHRIN_NO_CHAR:
+0000B4r 2  FA             plx
+0000B5r 2  18             clc
+0000B6r 2  60             rts
+0000B7r 2               
+0000B7r 2               ; Output a character from the A register to the Serial Card
+0000B7r 2               ; Modifies: Flags
+0000B7r 2               CHROUT:
+0000B7r 2  8D 00 90       sta SC_DATA
+0000BAr 2  48             pha
+0000BBr 2               @CHROUT_WAIT:
+0000BBr 2  AD 01 90       lda SC_STATUS
+0000BEr 2  29 10          and #SC_STATUS_TDRE           ; Check if TX buffer not empty
+0000C0r 2  F0 F9          beq @CHROUT_WAIT              ; Loop if TX buffer not empty
+0000C2r 2  68             pla
+0000C3r 2  60             rts
+0000C4r 2               
+0000C4r 2               ; Send instruction in A register to LCD
+0000C4r 2               ; Modifies: Flags
+0000C4r 2               LCD_INSTRUCTION:
+0000C4r 2  48             pha
+0000C5r 2  20 rr rr       jsr LCD_WAIT
+0000C8r 2  8D 00 9C       sta LCD_PORTB
+0000CBr 2  A9 00          lda #0                        ; Clear RS/RW/E bits
+0000CDr 2  8D 01 9C       sta LCD_PORTA
+0000D0r 2  A9 80          lda #LCD_E                    ; Set E bit to send instruction
+0000D2r 2  8D 01 9C       sta LCD_PORTA
+0000D5r 2  A9 00          lda #0                        ; Clear RS/RW/E bits
+0000D7r 2  8D 01 9C       sta LCD_PORTA
+0000DAr 2  68             pla
+0000DBr 2  60             rts
+0000DCr 2               
+0000DCr 2               ; Wait for LCD busy flag to clear
+0000DCr 2               ; Modifies: Flags
+0000DCr 2               LCD_WAIT:
+0000DCr 2  48             pha
+0000DDr 2  A9 00          lda #$00                      ; Port B is input
+0000DFr 2  8D 02 9C       sta LCD_DDRB
+0000E2r 2               @LCD_WAIT_BUSY:
+0000E2r 2  A9 40          lda #LCD_RW
+0000E4r 2  8D 01 9C       sta LCD_PORTA
+0000E7r 2  A9 C0          lda #(LCD_RW | LCD_E)
+0000E9r 2  8D 01 9C       sta LCD_PORTA
+0000ECr 2  AD 00 9C       lda LCD_PORTB
+0000EFr 2  29 80          and #$80                      ; Check the busy flag
+0000F1r 2  D0 EF          bne @LCD_WAIT_BUSY
+0000F3r 2               @LCD_WAIT_EXIT:
+0000F3r 2  A9 40          lda #LCD_RW
+0000F5r 2  8D 01 9C       sta LCD_PORTA
+0000F8r 2  A9 FF          lda #$FF                      ; Port B is output
+0000FAr 2  8D 02 9C       sta LCD_DDRB
+0000FDr 2  68             pla
+0000FEr 2  60             rts
+0000FFr 2               
+0000FFr 2               ; Clear the LCD display and return cursor to home
+0000FFr 2               ; Modifies: Flags
+0000FFr 2               LCD_CLEAR:
+0000FFr 2  48             pha
+000100r 2  A9 01          lda #$01                      ; Clear display
+000102r 2  20 rr rr       jsr LCD_INSTRUCTION
+000105r 2  A9 80          lda #$80                      ; Return cursor to home
+000107r 2  20 rr rr       jsr LCD_INSTRUCTION
+00010Ar 2  68             pla
+00010Br 2  60             rts
+00010Cr 2               
+00010Cr 2               ; Outputs character from the A register to LCD at cursor position
+00010Cr 2               ; Modifies: Flags
+00010Cr 2               LCD_CHROUT:
+00010Cr 2  48             pha
+00010Dr 2  20 rr rr       jsr LCD_WAIT
+000110r 2  8D 00 9C       sta LCD_PORTB
+000113r 2  A9 20          lda #LCD_RS                   ; Set RS; Clear RW/E bits
+000115r 2  8D 01 9C       sta LCD_PORTA
+000118r 2  A9 A0          lda #(LCD_RS | LCD_E)         ; Set E bit to send instruction
+00011Ar 2  8D 01 9C       sta LCD_PORTA
+00011Dr 2  A9 20          lda #LCD_RS                   ; Clear E bits
+00011Fr 2  8D 01 9C       sta LCD_PORTA
+000122r 2  68             pla
+000123r 2  60             rts
+000124r 2               
+000124r 2               ; Outputs string pointed to with STR_PTR to LCD at cursor position
+000124r 2               ; Modifies: Flags
+000124r 2               LCD_PRINT:
+000124r 2  48             pha                           ; Save A, Y to stack
+000125r 2  98             tya
+000126r 2  48             pha
+000127r 2  A0 00          ldy #$00
+000129r 2               @LCD_PRINT_LOOP:
+000129r 2  B1 02          lda (STR_PTR),y               ; Load next character at location pointed to by STR_PTR offset by Y
+00012Br 2  F0 06          beq @LCD_PRINT_EXIT
+00012Dr 2  20 rr rr       jsr LCD_CHROUT
+000130r 2  C8             iny
+000131r 2  D0 F6          bne @LCD_PRINT_LOOP
+000133r 2               @LCD_PRINT_EXIT:
+000133r 2  68             pla                           ; Restore A, Y
+000134r 2  A8             tay
+000135r 2  68             pla
+000136r 2  60             rts
+000137r 2               
+000137r 2               ; Sets the LCD cursor position using the value in A register
+000137r 2               ; Input: Accumulator = desired DDRAM address (e.g., $00-$0F for row 1, $40-$4F for row 2)
+000137r 2               ; Modifies: Flags
+000137r 2               LCD_PLOT:
+000137r 2  09 80          ora #%10000000                ; Set bit 7 to make it a "Set DDRAM Address" command ($80)
+000139r 2  20 rr rr       jsr LCD_INSTRUCTION           ; Send command
+00013Cr 2  60             rts
+00013Dr 2               
+00013Dr 2               ; Convert value in A register to two byte HEX value as ASCII and write to INPUT_BUFFER
+00013Dr 2               ; Modifies: Flags, Y
+00013Dr 2               HEX_TO_ASCII:
+00013Dr 2  48             pha                           ; Save original A value
+00013Er 2  4A             lsr                           ; Shift high nibble into low nibble
+00013Fr 2  4A             lsr
+000140r 2  4A             lsr
+000141r 2  4A             lsr
+000142r 2  A8             tay
+000143r 2  B9 rr rr       lda HEX_ASCII,y               ; Convert to ASCII
+000146r 2  20 rr rr       jsr WRITE_BUFFER              ; Write to INPUT_BUFFER
+000149r 2  68             pla                           ; Restore original A value
+00014Ar 2  48             pha
+00014Br 2  29 0F          and #$0F                      ; Mask low nibble
+00014Dr 2  A8             tay
+00014Er 2  B9 rr rr       lda HEX_ASCII,y               ; Convert to ASCII
+000151r 2  20 rr rr       jsr WRITE_BUFFER              ; Write to INPUT_BUFFER
+000154r 2  68             pla
+000155r 2  60             rts
+000156r 2               
+000156r 2               ; NMI Handler
+000156r 2               NMI:
+000156r 2  40             rti
+000157r 2               
+000157r 2               ; IRQ Handler
+000157r 2               IRQ:
+000157r 2  48             pha
+000158r 2  5A             phy
+000159r 2  DA             phx
+00015Ar 2               @IRQ_SC:
+00015Ar 2  AD 01 90       lda SC_STATUS
+00015Dr 2  29 80          and #SC_STATUS_IRQ            ; Check if serial data caused the interrupt
+00015Fr 2  F0 12          beq @IRQ_LCD                  ; If not, continue
+000161r 2  AD 00 90       lda SC_DATA                   ; Read the data from serial register
+000164r 2  20 rr rr       jsr WRITE_BUFFER              ; Store to the input buffer
+000167r 2  20 rr rr       jsr BUFFER_SIZE
+00016Ar 2  C9 F0          cmp #$F0                      ; Is the buffer almost full?
+00016Cr 2  90 05          bcc @IRQ_LCD                  ; If not, continue
+00016Er 2  A9 01          lda #$01                      ; No parity, no echo, RTSB high, TX interrupts disabled, RX interrupts enabled
+000170r 2  8D 02 90       sta SC_CMD                    ; Otherwise, signal not ready for receiving (RTSB high)
+000173r 2               @IRQ_LCD:
+000173r 2  AD 0D 9C       lda LCD_IFR
+000176r 2  29 02          and #%00000010                ; Check if CA1 caused the interrupt
+000178r 2  F0 07          beq @IRQ_EXIT                 ; If not, exit
+00017Ar 2  AD 01 9C       lda LCD_PORTA                 ; Read the data from VIA PORTA
+00017Dr 2  29 1F          and #%00011111                ; Mask off the lower five bits to read keypad data
+00017Fr 2  85 0F          sta KEYPAD_IN                 ; Store to the zero page for now
+000181r 2               @IRQ_EXIT:
+000181r 2  FA             plx
+000182r 2  7A             ply
+000183r 2  68             pla
+000184r 2  40             rti
+000185r 2               
+000185r 2               ; NMI Vector
+000185r 2               NMI_VEC:
+000185r 2  6C 04 03       jmp (NMI_PTR)                 ; Indirect jump through NMI pointer to the NMI handler
+000188r 2               
+000188r 2               ; Reset Vector
+000188r 2               RESET_VEC:
+000188r 2  4C rr rr       jmp RESET                     ; Initialize the system
+00018Br 2               
+00018Br 2               ; IRQ Vector
+00018Br 2               IRQ_VEC:
+00018Br 2  6C 00 03       jmp (IRQ_PTR)                 ; Indirect jump through IRQ pointer to the IRQ handler
+00018Er 2               
+00018Er 2               ; HEX to ASCII conversion lookup table
+00018Er 2  30 31 32 33  HEX_ASCII: .asciiz "0123456789ABCDEF"
+000192r 2  34 35 36 37  
+000196r 2  38 39 41 42  
+00019Fr 2               
+00019Fr 2               ; Banner message
+00019Fr 2  2D 2D 20 54  BANNER_ROW_1: .asciiz "-- THE 'KIM' ---"
+0001A3r 2  48 45 20 27  
+0001A7r 2  4B 49 4D 27  
+0001B0r 2  2D 2D 20 20  BANNER_ROW_2: .asciiz "--   v 1.0   ---"
+0001B4r 2  20 76 20 31  
+0001B8r 2  2E 30 20 20  
+0001C1r 2               
+0001C1r 1               .segment "CART"
 000000r 1               .include "Cart.asm"
 000000r 2               ; ***             ***
 000000r 2               ; ***    CART     ***

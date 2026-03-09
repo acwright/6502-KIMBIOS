@@ -91,7 +91,7 @@ STP_CTRL_AUTO_TX    := %00000100
 STP_CTRL_SLOW_CLK   := %00000010
 STP_CTRL_SELECT     := %00000001
 
-; Serial Card | IO 5 | $9000-$9003
+; Serial Card / Serial Card Pro | IO 5 | $9000-$9003
 SC_DATA             := $9000             ; R/W
 SC_RESET            := $9001             ; Write
 SC_STATUS           := $9001             ; Read

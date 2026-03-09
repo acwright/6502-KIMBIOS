@@ -55,12 +55,10 @@ INIT_IO:
   jsr LCD_INSTRUCTION
   lda #%00000110                ; Increment and shift cursor; don't shift display
   jsr LCD_INSTRUCTION
-  
   lda #%10000010                ; Enable IRQ on CA1
   sta LCD_IER
   lda #%00001101                ; Set CA2 to LOW output, CA1 to positive edge
   sta LCD_PCR
-
   rts
 
 ; Initialize the serial output
@@ -68,7 +66,7 @@ INIT_IO:
 INIT_SC:
   lda     #$1F                  ; 8-N-1, 19200 baud
   sta     SC_CTRL
-  lda     #$09                  ; No parity, no echo, tx interrupts disabled, rx interrupts enabled
+  lda     #$09                  ; No parity, no echo, RTSB low, TX interrupts disabled, RX interrupts enabled
   sta     SC_CMD
   rts
 
@@ -114,6 +112,18 @@ CHRIN:
   beq @CHRIN_NO_CHAR            ; Branch if no character available
   jsr READ_BUFFER               ; Read the character from the buffer
   jsr CHROUT                    ; Echo
+  pha                           
+  jsr BUFFER_SIZE               
+  cmp #$B0                      ; Check if buffer is mostly full
+  bcc @CHRIN_NOT_FULL           ; Branch if buffer size < $B0
+  lda #$01                      ; No parity, no echo, RTSB high, TX interrupts disabled, RX interrupts enabled
+  sta SC_CMD
+  bra @CHRIN_EXIT
+@CHRIN_NOT_FULL:
+  lda #$09                      ; No parity, no echo, RTSB low, TX interrupts disabled, RX interrupts enabled
+  sta SC_CMD
+@CHRIN_EXIT:
+  pla
   plx
   sec
   rts
@@ -222,7 +232,6 @@ LCD_PRINT:
 LCD_PLOT:
   ora #%10000000                ; Set bit 7 to make it a "Set DDRAM Address" command ($80)
   jsr LCD_INSTRUCTION           ; Send command
-  jsr LCD_WAIT                  ; Wait for busy flag (recommended)
   rts
 
 ; Convert value in A register to two byte HEX value as ASCII and write to INPUT_BUFFER
@@ -260,6 +269,11 @@ IRQ:
   beq @IRQ_LCD                  ; If not, continue
   lda SC_DATA                   ; Read the data from serial register
   jsr WRITE_BUFFER              ; Store to the input buffer
+  jsr BUFFER_SIZE
+  cmp #$F0                      ; Is the buffer almost full?
+  bcc @IRQ_LCD                  ; If not, continue
+  lda #$01                      ; No parity, no echo, RTSB high, TX interrupts disabled, RX interrupts enabled
+  sta SC_CMD                    ; Otherwise, signal not ready for receiving (RTSB high)
 @IRQ_LCD:
   lda LCD_IFR
   and #%00000010                ; Check if CA1 caused the interrupt
@@ -289,5 +303,5 @@ IRQ_VEC:
 HEX_ASCII: .asciiz "0123456789ABCDEF"
 
 ; Banner message
-BANNER_ROW_1: .asciiz "-- THE 'KIM' -- "
-BANNER_ROW_2: .asciiz " (ESC) FOR MON  "
+BANNER_ROW_1: .asciiz "-- THE 'KIM' ---"
+BANNER_ROW_2: .asciiz "--   v 1.0   ---"
