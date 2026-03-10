@@ -21,8 +21,8 @@ RESET:
   sta NMI_PTR + 1
 
   jsr INIT_BUFFER               ; Initialize the input buffer
-  jsr INIT_IO                   ; Initialize the keypad and LCD
   jsr INIT_SC                   ; Initialize the serial output
+  jsr INIT_IO                   ; Initialize the keypad and LCD
 
   jsr LCD_CLEAR                 ; Clear the LCD (just in case)
   lda #<BANNER_ROW_1            ; Initialize the banner row 1 pointer
