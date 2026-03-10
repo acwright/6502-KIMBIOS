@@ -309,58 +309,58 @@ Current file: BIOS.asm
 000000r 2               ; ***             ***
 000000r 2               
 000000r 2               ; Main entry point
-000000r 2               RESET:
+000000r 2               Reset:
 000000r 2  D8             cld                           ; Clear decimal mode
 000001r 2  78             sei                           ; Disable interrupts
 000002r 2               
 000002r 2  A2 FF          ldx #$ff
 000004r 2  9A             txs                           ; Reset the stack pointer
 000005r 2               
-000005r 2  A9 rr          lda #<IRQ                     ; Initialize the IRQ pointer
+000005r 2  A9 rr          lda #<Irq                     ; Initialize the IRQ pointer
 000007r 2  8D 00 03       sta IRQ_PTR
-00000Ar 2  A9 rr          lda #>IRQ
+00000Ar 2  A9 rr          lda #>Irq
 00000Cr 2  8D 01 03       sta IRQ_PTR + 1
 00000Fr 2               
-00000Fr 2  A9 rr          lda #<NMI                     ; Initialize the NMI pointer
+00000Fr 2  A9 rr          lda #<Nmi                     ; Initialize the NMI pointer
 000011r 2  8D 04 03       sta NMI_PTR
-000014r 2  A9 rr          lda #>NMI
+000014r 2  A9 rr          lda #>Nmi
 000016r 2  8D 05 03       sta NMI_PTR + 1
 000019r 2               
-000019r 2  20 rr rr       jsr INIT_BUFFER               ; Initialize the input buffer
-00001Cr 2  20 rr rr       jsr INIT_IO                   ; Initialize the keypad and LCD
-00001Fr 2  20 rr rr       jsr INIT_SC                   ; Initialize the serial output
+000019r 2  20 rr rr       jsr InitBuffer                ; Initialize the input buffer
+00001Cr 2  20 rr rr       jsr InitSc                    ; Initialize the serial output
+00001Fr 2  20 rr rr       jsr InitIo                    ; Initialize the keypad and LCD
 000022r 2               
-000022r 2  20 rr rr       jsr LCD_CLEAR                 ; Clear the LCD (just in case)
-000025r 2  A9 rr          lda #<BANNER_ROW_1            ; Initialize the banner row 1 pointer
+000022r 2  20 rr rr       jsr LcdClear                  ; Clear the LCD (just in case)
+000025r 2  A9 rr          lda #<BannerRow1              ; Initialize the banner row 1 pointer
 000027r 2  85 02          sta STR_PTR
-000029r 2  A9 rr          lda #>BANNER_ROW_1
+000029r 2  A9 rr          lda #>BannerRow1
 00002Br 2  85 03          sta STR_PTR + 1
-00002Dr 2  20 rr rr       jsr LCD_PRINT
+00002Dr 2  20 rr rr       jsr LcdPrint
 000030r 2               
 000030r 2  A9 40          lda #$40                      ; Cursor to row 2, column 0
-000032r 2  20 rr rr       jsr LCD_PLOT
-000035r 2  A9 rr          lda #<BANNER_ROW_2            ; Initialize the banner row 2 pointer
+000032r 2  20 rr rr       jsr LcdPlot
+000035r 2  A9 rr          lda #<BannerRow2              ; Initialize the banner row 2 pointer
 000037r 2  85 02          sta STR_PTR
-000039r 2  A9 rr          lda #>BANNER_ROW_2
+000039r 2  A9 rr          lda #>BannerRow2
 00003Br 2  85 03          sta STR_PTR + 1
-00003Dr 2  20 rr rr       jsr LCD_PRINT
+00003Dr 2  20 rr rr       jsr LcdPrint
 000040r 2               
 000040r 2  58             cli                           ; Enable interrupts
 000041r 2               
-000041r 2  4C rr rr       jmp WOZ_MON                   ; Jump to Wozmon
+000041r 2  4C rr rr       jmp WozMon                    ; Jump to Wozmon
 000044r 2               
 000044r 2               ; Initialize the IO (keypad and LCD)
-000044r 2               INIT_IO:
+000044r 2               InitIo:
 000044r 2  A9 FF          lda #$FF                      ; Set all pins on port B to output
 000046r 2  8D 02 9C       sta LCD_DDRB
 000049r 2  A9 E0          lda #(LCD_E | LCD_RW | LCD_RS); Set top 3 pins on port A to output
 00004Br 2  8D 03 9C       sta LCD_DDRA
 00004Er 2  A9 38          lda #%00111000                ; Set 8-bit mode; 2-line display; 5x8 font
-000050r 2  20 rr rr       jsr LCD_INSTRUCTION
+000050r 2  20 rr rr       jsr LcdInstruction
 000053r 2  A9 0C          lda #%00001100                ; Display on; cursor off; blink off
-000055r 2  20 rr rr       jsr LCD_INSTRUCTION
+000055r 2  20 rr rr       jsr LcdInstruction
 000058r 2  A9 06          lda #%00000110                ; Increment and shift cursor; don't shift display
-00005Ar 2  20 rr rr       jsr LCD_INSTRUCTION
+00005Ar 2  20 rr rr       jsr LcdInstruction
 00005Dr 2  A9 82          lda #%10000010                ; Enable IRQ on CA1
 00005Fr 2  8D 0E 9C       sta LCD_IER
 000062r 2  A9 0D          lda #%00001101                ; Set CA2 to LOW output, CA1 to positive edge
@@ -369,7 +369,7 @@ Current file: BIOS.asm
 000068r 2               
 000068r 2               ; Initialize the serial output
 000068r 2               ; Modifies: Flags, A
-000068r 2               INIT_SC:
+000068r 2               InitSc:
 000068r 2  A9 1F          lda     #$1F                  ; 8-N-1, 19200 baud
 00006Ar 2  8D 03 90       sta     SC_CTRL
 00006Dr 2  A9 09          lda     #$09                  ; No parity, no echo, RTSB low, TX interrupts disabled, RX interrupts enabled
@@ -378,7 +378,7 @@ Current file: BIOS.asm
 000073r 2               
 000073r 2               ; Initialize the INPUT_BUFFER
 000073r 2               ; Modifies: Flags, A
-000073r 2               INIT_BUFFER:
+000073r 2               InitBuffer:
 000073r 2  A9 00          lda #$00
 000075r 2  85 00          sta READ_PTR                  ; Init read and write pointers
 000077r 2  85 01          sta WRITE_PTR
@@ -386,7 +386,7 @@ Current file: BIOS.asm
 00007Ar 2               
 00007Ar 2               ; Write a character from the A register to the INPUT_BUFFER
 00007Ar 2               ; Modifies: Flags, X
-00007Ar 2               WRITE_BUFFER:
+00007Ar 2               WriteBuffer:
 00007Ar 2  A6 01          ldx WRITE_PTR
 00007Cr 2  9D 00 02       sta INPUT_BUFFER,x
 00007Fr 2  E6 01          inc WRITE_PTR
@@ -394,7 +394,7 @@ Current file: BIOS.asm
 000082r 2               
 000082r 2               ; Read a character from the INPUT_BUFFER and store it in A register
 000082r 2               ; Modifies: Flags, X, A
-000082r 2               READ_BUFFER:
+000082r 2               ReadBuffer:
 000082r 2  A6 00          ldx READ_PTR
 000084r 2  BD 00 02       lda INPUT_BUFFER,x
 000087r 2  E6 00          inc READ_PTR
@@ -402,7 +402,7 @@ Current file: BIOS.asm
 00008Ar 2               
 00008Ar 2               ; Return in A register the number of unread bytes in the INPUT_BUFFER
 00008Ar 2               ; Modifies: Flags, A
-00008Ar 2               BUFFER_SIZE:
+00008Ar 2               BufferSize:
 00008Ar 2  A5 01          lda WRITE_PTR
 00008Cr 2  38             sec
 00008Dr 2  E5 00          sbc READ_PTR
@@ -412,49 +412,49 @@ Current file: BIOS.asm
 000090r 2               ; On return, carry flag indicates whether a character was available
 000090r 2               ; If character available the character will be in the A register
 000090r 2               ; Modifies: Flags, A
-000090r 2               CHRIN:
+000090r 2               Chrin:
 000090r 2  DA             phx
-000091r 2  20 rr rr       jsr BUFFER_SIZE               ; Check for character available
-000094r 2  F0 1E          beq @CHRIN_NO_CHAR            ; Branch if no character available
-000096r 2  20 rr rr       jsr READ_BUFFER               ; Read the character from the buffer
-000099r 2  20 rr rr       jsr CHROUT                    ; Echo
+000091r 2  20 rr rr       jsr BufferSize                ; Check for character available
+000094r 2  F0 1E          beq @ChrinNoChar              ; Branch if no character available
+000096r 2  20 rr rr       jsr ReadBuffer                ; Read the character from the buffer
+000099r 2  20 rr rr       jsr Chrout                    ; Echo
 00009Cr 2  48             pha
-00009Dr 2  20 rr rr       jsr BUFFER_SIZE
+00009Dr 2  20 rr rr       jsr BufferSize
 0000A0r 2  C9 B0          cmp #$B0                      ; Check if buffer is mostly full
-0000A2r 2  90 07          bcc @CHRIN_NOT_FULL           ; Branch if buffer size < $B0
+0000A2r 2  90 07          bcc @ChrinNotFull             ; Branch if buffer size < $B0
 0000A4r 2  A9 01          lda #$01                      ; No parity, no echo, RTSB high, TX interrupts disabled, RX interrupts enabled
 0000A6r 2  8D 02 90       sta SC_CMD
-0000A9r 2  80 05          bra @CHRIN_EXIT
-0000ABr 2               @CHRIN_NOT_FULL:
+0000A9r 2  80 05          bra @ChrinExit
+0000ABr 2               @ChrinNotFull:
 0000ABr 2  A9 09          lda #$09                      ; No parity, no echo, RTSB low, TX interrupts disabled, RX interrupts enabled
 0000ADr 2  8D 02 90       sta SC_CMD
-0000B0r 2               @CHRIN_EXIT:
+0000B0r 2               @ChrinExit:
 0000B0r 2  68             pla
 0000B1r 2  FA             plx
 0000B2r 2  38             sec
 0000B3r 2  60             rts
-0000B4r 2               @CHRIN_NO_CHAR:
+0000B4r 2               @ChrinNoChar:
 0000B4r 2  FA             plx
 0000B5r 2  18             clc
 0000B6r 2  60             rts
 0000B7r 2               
 0000B7r 2               ; Output a character from the A register to the Serial Card
 0000B7r 2               ; Modifies: Flags
-0000B7r 2               CHROUT:
+0000B7r 2               Chrout:
 0000B7r 2  8D 00 90       sta SC_DATA
 0000BAr 2  48             pha
-0000BBr 2               @CHROUT_WAIT:
+0000BBr 2               @ChroutWait:
 0000BBr 2  AD 01 90       lda SC_STATUS
 0000BEr 2  29 10          and #SC_STATUS_TDRE           ; Check if TX buffer not empty
-0000C0r 2  F0 F9          beq @CHROUT_WAIT              ; Loop if TX buffer not empty
+0000C0r 2  F0 F9          beq @ChroutWait               ; Loop if TX buffer not empty
 0000C2r 2  68             pla
 0000C3r 2  60             rts
 0000C4r 2               
 0000C4r 2               ; Send instruction in A register to LCD
 0000C4r 2               ; Modifies: Flags
-0000C4r 2               LCD_INSTRUCTION:
+0000C4r 2               LcdInstruction:
 0000C4r 2  48             pha
-0000C5r 2  20 rr rr       jsr LCD_WAIT
+0000C5r 2  20 rr rr       jsr LcdWait
 0000C8r 2  8D 00 9C       sta LCD_PORTB
 0000CBr 2  A9 00          lda #0                        ; Clear RS/RW/E bits
 0000CDr 2  8D 01 9C       sta LCD_PORTA
@@ -467,19 +467,19 @@ Current file: BIOS.asm
 0000DCr 2               
 0000DCr 2               ; Wait for LCD busy flag to clear
 0000DCr 2               ; Modifies: Flags
-0000DCr 2               LCD_WAIT:
+0000DCr 2               LcdWait:
 0000DCr 2  48             pha
 0000DDr 2  A9 00          lda #$00                      ; Port B is input
 0000DFr 2  8D 02 9C       sta LCD_DDRB
-0000E2r 2               @LCD_WAIT_BUSY:
+0000E2r 2               @LcdWaitBusy:
 0000E2r 2  A9 40          lda #LCD_RW
 0000E4r 2  8D 01 9C       sta LCD_PORTA
 0000E7r 2  A9 C0          lda #(LCD_RW | LCD_E)
 0000E9r 2  8D 01 9C       sta LCD_PORTA
 0000ECr 2  AD 00 9C       lda LCD_PORTB
 0000EFr 2  29 80          and #$80                      ; Check the busy flag
-0000F1r 2  D0 EF          bne @LCD_WAIT_BUSY
-0000F3r 2               @LCD_WAIT_EXIT:
+0000F1r 2  D0 EF          bne @LcdWaitBusy
+0000F3r 2               @LcdWaitExit:
 0000F3r 2  A9 40          lda #LCD_RW
 0000F5r 2  8D 01 9C       sta LCD_PORTA
 0000F8r 2  A9 FF          lda #$FF                      ; Port B is output
@@ -489,20 +489,20 @@ Current file: BIOS.asm
 0000FFr 2               
 0000FFr 2               ; Clear the LCD display and return cursor to home
 0000FFr 2               ; Modifies: Flags
-0000FFr 2               LCD_CLEAR:
+0000FFr 2               LcdClear:
 0000FFr 2  48             pha
 000100r 2  A9 01          lda #$01                      ; Clear display
-000102r 2  20 rr rr       jsr LCD_INSTRUCTION
+000102r 2  20 rr rr       jsr LcdInstruction
 000105r 2  A9 80          lda #$80                      ; Return cursor to home
-000107r 2  20 rr rr       jsr LCD_INSTRUCTION
+000107r 2  20 rr rr       jsr LcdInstruction
 00010Ar 2  68             pla
 00010Br 2  60             rts
 00010Cr 2               
 00010Cr 2               ; Outputs character from the A register to LCD at cursor position
 00010Cr 2               ; Modifies: Flags
-00010Cr 2               LCD_CHROUT:
+00010Cr 2               LcdChrout:
 00010Cr 2  48             pha
-00010Dr 2  20 rr rr       jsr LCD_WAIT
+00010Dr 2  20 rr rr       jsr LcdWait
 000110r 2  8D 00 9C       sta LCD_PORTB
 000113r 2  A9 20          lda #LCD_RS                   ; Set RS; Clear RW/E bits
 000115r 2  8D 01 9C       sta LCD_PORTA
@@ -515,18 +515,18 @@ Current file: BIOS.asm
 000124r 2               
 000124r 2               ; Outputs string pointed to with STR_PTR to LCD at cursor position
 000124r 2               ; Modifies: Flags
-000124r 2               LCD_PRINT:
+000124r 2               LcdPrint:
 000124r 2  48             pha                           ; Save A, Y to stack
 000125r 2  98             tya
 000126r 2  48             pha
 000127r 2  A0 00          ldy #$00
-000129r 2               @LCD_PRINT_LOOP:
+000129r 2               @LcdPrintLoop:
 000129r 2  B1 02          lda (STR_PTR),y               ; Load next character at location pointed to by STR_PTR offset by Y
-00012Br 2  F0 06          beq @LCD_PRINT_EXIT
-00012Dr 2  20 rr rr       jsr LCD_CHROUT
+00012Br 2  F0 06          beq @LcdPrintExit
+00012Dr 2  20 rr rr       jsr LcdChrout
 000130r 2  C8             iny
-000131r 2  D0 F6          bne @LCD_PRINT_LOOP
-000133r 2               @LCD_PRINT_EXIT:
+000131r 2  D0 F6          bne @LcdPrintLoop
+000133r 2               @LcdPrintExit:
 000133r 2  68             pla                           ; Restore A, Y
 000134r 2  A8             tay
 000135r 2  68             pla
@@ -535,86 +535,86 @@ Current file: BIOS.asm
 000137r 2               ; Sets the LCD cursor position using the value in A register
 000137r 2               ; Input: Accumulator = desired DDRAM address (e.g., $00-$0F for row 1, $40-$4F for row 2)
 000137r 2               ; Modifies: Flags
-000137r 2               LCD_PLOT:
+000137r 2               LcdPlot:
 000137r 2  09 80          ora #%10000000                ; Set bit 7 to make it a "Set DDRAM Address" command ($80)
-000139r 2  20 rr rr       jsr LCD_INSTRUCTION           ; Send command
+000139r 2  20 rr rr       jsr LcdInstruction            ; Send command
 00013Cr 2  60             rts
 00013Dr 2               
 00013Dr 2               ; Convert value in A register to two byte HEX value as ASCII and write to INPUT_BUFFER
 00013Dr 2               ; Modifies: Flags, Y
-00013Dr 2               HEX_TO_ASCII:
+00013Dr 2               HexToAscii:
 00013Dr 2  48             pha                           ; Save original A value
 00013Er 2  4A             lsr                           ; Shift high nibble into low nibble
 00013Fr 2  4A             lsr
 000140r 2  4A             lsr
 000141r 2  4A             lsr
 000142r 2  A8             tay
-000143r 2  B9 rr rr       lda HEX_ASCII,y               ; Convert to ASCII
-000146r 2  20 rr rr       jsr WRITE_BUFFER              ; Write to INPUT_BUFFER
+000143r 2  B9 rr rr       lda HexAscii,y                ; Convert to ASCII
+000146r 2  20 rr rr       jsr WriteBuffer               ; Write to INPUT_BUFFER
 000149r 2  68             pla                           ; Restore original A value
 00014Ar 2  48             pha
 00014Br 2  29 0F          and #$0F                      ; Mask low nibble
 00014Dr 2  A8             tay
-00014Er 2  B9 rr rr       lda HEX_ASCII,y               ; Convert to ASCII
-000151r 2  20 rr rr       jsr WRITE_BUFFER              ; Write to INPUT_BUFFER
+00014Er 2  B9 rr rr       lda HexAscii,y                ; Convert to ASCII
+000151r 2  20 rr rr       jsr WriteBuffer               ; Write to INPUT_BUFFER
 000154r 2  68             pla
 000155r 2  60             rts
 000156r 2               
 000156r 2               ; NMI Handler
-000156r 2               NMI:
+000156r 2               Nmi:
 000156r 2  40             rti
 000157r 2               
 000157r 2               ; IRQ Handler
-000157r 2               IRQ:
+000157r 2               Irq:
 000157r 2  48             pha
 000158r 2  5A             phy
 000159r 2  DA             phx
-00015Ar 2               @IRQ_SC:
+00015Ar 2               @IrqSc:
 00015Ar 2  AD 01 90       lda SC_STATUS
 00015Dr 2  29 80          and #SC_STATUS_IRQ            ; Check if serial data caused the interrupt
-00015Fr 2  F0 12          beq @IRQ_LCD                  ; If not, continue
+00015Fr 2  F0 12          beq @IrqLcd                   ; If not, continue
 000161r 2  AD 00 90       lda SC_DATA                   ; Read the data from serial register
-000164r 2  20 rr rr       jsr WRITE_BUFFER              ; Store to the input buffer
-000167r 2  20 rr rr       jsr BUFFER_SIZE
+000164r 2  20 rr rr       jsr WriteBuffer               ; Store to the input buffer
+000167r 2  20 rr rr       jsr BufferSize
 00016Ar 2  C9 F0          cmp #$F0                      ; Is the buffer almost full?
-00016Cr 2  90 05          bcc @IRQ_LCD                  ; If not, continue
+00016Cr 2  90 05          bcc @IrqLcd                   ; If not, continue
 00016Er 2  A9 01          lda #$01                      ; No parity, no echo, RTSB high, TX interrupts disabled, RX interrupts enabled
 000170r 2  8D 02 90       sta SC_CMD                    ; Otherwise, signal not ready for receiving (RTSB high)
-000173r 2               @IRQ_LCD:
+000173r 2               @IrqLcd:
 000173r 2  AD 0D 9C       lda LCD_IFR
 000176r 2  29 02          and #%00000010                ; Check if CA1 caused the interrupt
-000178r 2  F0 07          beq @IRQ_EXIT                 ; If not, exit
+000178r 2  F0 07          beq @IrqExit                  ; If not, exit
 00017Ar 2  AD 01 9C       lda LCD_PORTA                 ; Read the data from VIA PORTA
 00017Dr 2  29 1F          and #%00011111                ; Mask off the lower five bits to read keypad data
 00017Fr 2  85 0F          sta KEYPAD_IN                 ; Store to the zero page for now
-000181r 2               @IRQ_EXIT:
+000181r 2               @IrqExit:
 000181r 2  FA             plx
 000182r 2  7A             ply
 000183r 2  68             pla
 000184r 2  40             rti
 000185r 2               
 000185r 2               ; NMI Vector
-000185r 2               NMI_VEC:
+000185r 2               NmiVec:
 000185r 2  6C 04 03       jmp (NMI_PTR)                 ; Indirect jump through NMI pointer to the NMI handler
 000188r 2               
 000188r 2               ; Reset Vector
-000188r 2               RESET_VEC:
-000188r 2  4C rr rr       jmp RESET                     ; Initialize the system
+000188r 2               ResetVec:
+000188r 2  4C rr rr       jmp Reset                     ; Initialize the system
 00018Br 2               
 00018Br 2               ; IRQ Vector
-00018Br 2               IRQ_VEC:
+00018Br 2               IrqVec:
 00018Br 2  6C 00 03       jmp (IRQ_PTR)                 ; Indirect jump through IRQ pointer to the IRQ handler
 00018Er 2               
 00018Er 2               ; HEX to ASCII conversion lookup table
-00018Er 2  30 31 32 33  HEX_ASCII: .asciiz "0123456789ABCDEF"
+00018Er 2  30 31 32 33  HexAscii: .asciiz "0123456789ABCDEF"
 000192r 2  34 35 36 37  
 000196r 2  38 39 41 42  
 00019Fr 2               
 00019Fr 2               ; Banner message
-00019Fr 2  2D 2D 20 54  BANNER_ROW_1: .asciiz "-- THE 'KIM' ---"
+00019Fr 2  2D 2D 20 54  BannerRow1: .asciiz "-- THE 'KIM' ---"
 0001A3r 2  48 45 20 27  
 0001A7r 2  4B 49 4D 27  
-0001B0r 2  2D 2D 20 20  BANNER_ROW_2: .asciiz "--   v 1.0   ---"
+0001B0r 2  2D 2D 20 20  BannerRow2: .asciiz "--   v 1.0   ---"
 0001B4r 2  20 76 20 31  
 0001B8r 2  2E 30 20 20  
 0001C1r 2               
@@ -640,173 +640,173 @@ Current file: BIOS.asm
 000000r 2               WOZ_MODE  = $2B               ; $00=XAM, $7F=STOR, $AE=BLOCK XAM
 000000r 2               WOZ_IN    = USER_VARS         ; Input buffer
 000000r 2               
-000000r 2               WOZ_MON:
+000000r 2               WozMon:
 000000r 2  A9 1B          lda     #$1B                ; Begin with escape
 000002r 2               
-000002r 2               WOZ_NOTCR:
+000002r 2               WozNotCr:
 000002r 2  C9 08          cmp     #$08                ; Backspace key?
-000004r 2  F0 18          beq     WOZ_BACKSPACE       ; Yes
+000004r 2  F0 18          beq     WozBackspace        ; Yes
 000006r 2  C9 1B          cmp     #$1B                ; ESC?
-000008r 2  F0 03          beq     WOZ_ESCAPE          ; Yes
+000008r 2  F0 03          beq     WozEscape           ; Yes
 00000Ar 2  C8             iny                         ; Advance text index
-00000Br 2  10 14          bpl     WOZ_NEXTCHAR        ; Auto ESC if line longer than 127
+00000Br 2  10 14          bpl     WozNextchar         ; Auto ESC if line longer than 127
 00000Dr 2               
-00000Dr 2               WOZ_ESCAPE:
+00000Dr 2               WozEscape:
 00000Dr 2  A9 5C          lda     #$5C                ; "\"
-00000Fr 2  20 rr rr       jsr     WOZ_ECHO            ; Output it
+00000Fr 2  20 rr rr       jsr     WozEcho             ; Output it
 000012r 2               
-000012r 2               WOZ_GETLINE:
+000012r 2               WozGetline:
 000012r 2  A9 0D          lda     #$0D                ; Send CR
-000014r 2  20 rr rr       jsr     WOZ_ECHO
+000014r 2  20 rr rr       jsr     WozEcho
 000017r 2  A9 0A          lda     #$0A                ; Send LF
-000019r 2  20 rr rr       jsr     WOZ_ECHO
+000019r 2  20 rr rr       jsr     WozEcho
 00001Cr 2               
 00001Cr 2  A0 01          ldy     #$01                ; Initialize text index
-00001Er 2               WOZ_BACKSPACE:
+00001Er 2               WozBackspace:
 00001Er 2  88             dey                         ; Back up text index
-00001Fr 2  30 F1          bmi     WOZ_GETLINE         ; Beyond start of line, reinitialize
+00001Fr 2  30 F1          bmi     WozGetline          ; Beyond start of line, reinitialize
 000021r 2               
-000021r 2               WOZ_NEXTCHAR:
-000021r 2  20 rr rr       jsr     CHRIN               ; Get next character
-000024r 2  90 FB          bcc     WOZ_NEXTCHAR        ; No character found
+000021r 2               WozNextchar:
+000021r 2  20 rr rr       jsr     Chrin               ; Get next character
+000024r 2  90 FB          bcc     WozNextchar         ; No character found
 000026r 2  99 00 04       sta     WOZ_IN,y            ; Add to text buffer
 000029r 2  C9 0D          cmp     #$0D                ; CR?
-00002Br 2  D0 D5          bne     WOZ_NOTCR           ; No
+00002Br 2  D0 D5          bne     WozNotCr            ; No
 00002Dr 2               
 00002Dr 2  A0 FF          ldy     #$FF                ; Reset text index
 00002Fr 2  A9 00          lda     #$00                ; For XAM mode
 000031r 2  AA             tax                         ; X=0
-000032r 2               WOZ_SETBLOCK:
+000032r 2               WozSetblock:
 000032r 2  0A             asl
-000033r 2               WOZ_SETSTOR:
+000033r 2               WozSetstor:
 000033r 2  0A             asl                         ; Leaves $7B if setting STOR mode
 000034r 2  85 2B          sta     WOZ_MODE            ; $00 = XAM, $74 = STOR, $B8 = BLOK XAM
-000036r 2               WOZ_BLSKIP:
+000036r 2               WozBlskip:
 000036r 2  C8             iny                         ; Advance text index
-000037r 2               WOZ_NEXTITEM:
+000037r 2               WozNextitem:
 000037r 2  B9 00 04       lda     WOZ_IN,y            ; Get character
 00003Ar 2  C9 0D          cmp     #$0D                ; CR?
-00003Cr 2  F0 D4          beq     WOZ_GETLINE         ; Yes, done this line
+00003Cr 2  F0 D4          beq     WozGetline          ; Yes, done this line
 00003Er 2  C9 2E          cmp     #$2E                ; "."?
-000040r 2  90 F4          bcc     WOZ_BLSKIP          ; Skip delimiter
-000042r 2  F0 EE          beq     WOZ_SETBLOCK        ; Set BLOCK XAM mode
+000040r 2  90 F4          bcc     WozBlskip           ; Skip delimiter
+000042r 2  F0 EE          beq     WozSetblock         ; Set BLOCK XAM mode
 000044r 2  C9 3A          cmp     #$3A                ; ":"?
-000046r 2  F0 EB          beq     WOZ_SETSTOR         ; Yes, set STOR mode
+000046r 2  F0 EB          beq     WozSetstor          ; Yes, set STOR mode
 000048r 2  C9 52          cmp     #$52                ; "R"?
-00004Ar 2  F0 3B          beq     WOZ_RUN             ; Yes, run user program
+00004Ar 2  F0 3B          beq     WozRun              ; Yes, run user program
 00004Cr 2  86 28          stx     WOZ_L               ; $00 -> L
 00004Er 2  86 29          stx     WOZ_H               ;    and H
 000050r 2  84 2A          sty     WOZ_YSAV            ; Save Y for comparison
 000052r 2               
-000052r 2               WOZ_NEXTHEX:
+000052r 2               WozNexthex:
 000052r 2  B9 00 04       lda     WOZ_IN,y            ; Get character for hex test
 000055r 2  49 30          eor     #$30                ; Map digits to $0-9
 000057r 2  C9 0A          cmp     #$0A                ; Digit?
-000059r 2  90 06          bcc     WOZ_DIG             ; Yes
+000059r 2  90 06          bcc     WozDig              ; Yes
 00005Br 2  69 88          adc     #$88                ; Map letter "A"-"F" to $FA-FF
 00005Dr 2  C9 FA          cmp     #$FA                ; Hex letter?
-00005Fr 2  90 11          bcc     WOZ_NOTHEX          ; No, character not hex
-000061r 2               WOZ_DIG:
+00005Fr 2  90 11          bcc     WozNothex           ; No, character not hex
+000061r 2               WozDig:
 000061r 2  0A             asl
 000062r 2  0A             asl                         ; Hex digit to MSD of A
 000063r 2  0A             asl
 000064r 2  0A             asl
 000065r 2               
 000065r 2  A2 04          ldx     #$04                ; Shift count
-000067r 2               WOZ_HEXSHIFT:
+000067r 2               WozHexshift:
 000067r 2  0A             asl                         ; Hex digit left, MSB to carry
 000068r 2  26 28          rol     WOZ_L               ; Rotate into LSD
 00006Ar 2  26 29          rol     WOZ_H               ; Rotate into MSD's
 00006Cr 2  CA             dex                         ; Done 4 shifts?
-00006Dr 2  D0 F8          bne     WOZ_HEXSHIFT        ; No, loop
+00006Dr 2  D0 F8          bne     WozHexshift         ; No, loop
 00006Fr 2  C8             iny                         ; Advance text index
-000070r 2  D0 E0          bne     WOZ_NEXTHEX         ; Always taken. Check next character for hex
+000070r 2  D0 E0          bne     WozNexthex          ; Always taken. Check next character for hex
 000072r 2               
-000072r 2               WOZ_NOTHEX:
+000072r 2               WozNothex:
 000072r 2  C4 2A          cpy     WOZ_YSAV            ; Check if L, H empty (no hex digits)
-000074r 2  F0 97          beq     WOZ_ESCAPE          ; Yes, generate ESC sequence
+000074r 2  F0 97          beq     WozEscape           ; Yes, generate ESC sequence
 000076r 2               
 000076r 2  24 2B          bit     WOZ_MODE            ; Test MODE byte
-000078r 2  50 16          bvc     WOZ_NOTSTOR         ; B6=0 is STOR, 1 is XAM and BLOCK XAM
+000078r 2  50 16          bvc     WozNotstor          ; B6=0 is STOR, 1 is XAM and BLOCK XAM
 00007Ar 2               
 00007Ar 2  A5 28          lda     WOZ_L               ; LSD's of hex data
 00007Cr 2  81 26          sta     (WOZ_STL,x)         ; Store current 'store index'
 00007Er 2  E6 26          inc     WOZ_STL             ; Increment store index
-000080r 2  D0 B5          bne     WOZ_NEXTITEM        ; Get next item (no carry)
+000080r 2  D0 B5          bne     WozNextitem         ; Get next item (no carry)
 000082r 2  E6 27          inc     WOZ_STH             ; Add carry to 'store index' high order
-000084r 2               WOZ_TONEXTITEM:
-000084r 2  4C rr rr       jmp     WOZ_NEXTITEM        ; Get next command item
+000084r 2               WozTonextitem:
+000084r 2  4C rr rr       jmp     WozNextitem         ; Get next command item
 000087r 2               
-000087r 2               WOZ_RUN:
-000087r 2  20 rr rr       jsr     WOZ_JUMP            ; Begin executing at XAM index
-00008Ar 2  4C rr rr       jmp     WOZ_MON             ; After returning we reset
-00008Dr 2               WOZ_JUMP:
+000087r 2               WozRun:
+000087r 2  20 rr rr       jsr     WozJump             ; Begin executing at XAM index
+00008Ar 2  4C rr rr       jmp     WozMon              ; After returning we reset
+00008Dr 2               WozJump:
 00008Dr 2  6C 24 00       jmp     (WOZ_XAML)          ; Run at current XAM index
 000090r 2               
-000090r 2               WOZ_NOTSTOR:
-000090r 2  30 30          bmi     WOZ_XAMNEXT         ; B7 = 0 for XAM, 1 for BLOCK XAM
+000090r 2               WozNotstor:
+000090r 2  30 30          bmi     WozXamnext          ; B7 = 0 for XAM, 1 for BLOCK XAM
 000092r 2               
 000092r 2  A2 02          ldx     #$02                ; Byte count
-000094r 2               WOZ_SETADR:
+000094r 2               WozSetadr:
 000094r 2  B5 27          lda     WOZ_L-1,x           ; Copy hex data to
 000096r 2  95 25          sta     WOZ_STL-1,x         ;  'store index'
 000098r 2  95 23          sta     WOZ_XAML-1,x        ; And to 'XAM index'
 00009Ar 2  CA             dex                         ; Next of 2 bytes
-00009Br 2  D0 F7          bne     WOZ_SETADR          ; Loop unless X = 0
+00009Br 2  D0 F7          bne     WozSetadr           ; Loop unless X = 0
 00009Dr 2               
-00009Dr 2               WOZ_NXTPRNT:
-00009Dr 2  D0 19          bne     WOZ_PRDATA          ; NE means no address to print
+00009Dr 2               WozNxtprnt:
+00009Dr 2  D0 19          bne     WozPrdata           ; NE means no address to print
 00009Fr 2  A9 0D          lda     #$0D                ; CR
-0000A1r 2  20 rr rr       jsr     WOZ_ECHO            ; Output it
+0000A1r 2  20 rr rr       jsr     WozEcho             ; Output it
 0000A4r 2  A9 0A          lda     #$0A                ; LF
-0000A6r 2  20 rr rr       jsr     WOZ_ECHO            ; Output it
+0000A6r 2  20 rr rr       jsr     WozEcho             ; Output it
 0000A9r 2  A5 25          lda     WOZ_XAMH            ; 'Examine index' high-order byte
-0000ABr 2  20 rr rr       jsr     WOZ_PRBYTE          ; Output it in hex format
+0000ABr 2  20 rr rr       jsr     WozPrbyte           ; Output it in hex format
 0000AEr 2  A5 24          lda     WOZ_XAML            ; Low-order 'examine index' byte
-0000B0r 2  20 rr rr       jsr     WOZ_PRBYTE          ; Output it in hex format
+0000B0r 2  20 rr rr       jsr     WozPrbyte           ; Output it in hex format
 0000B3r 2  A9 3A          lda     #$3A                ; ":"
-0000B5r 2  20 rr rr       jsr     WOZ_ECHO            ; Output it
+0000B5r 2  20 rr rr       jsr     WozEcho             ; Output it
 0000B8r 2               
-0000B8r 2               WOZ_PRDATA:
+0000B8r 2               WozPrdata:
 0000B8r 2  A9 20          lda     #$20                ; Blank
-0000BAr 2  20 rr rr       jsr     WOZ_ECHO            ; Output it
+0000BAr 2  20 rr rr       jsr     WozEcho             ; Output it
 0000BDr 2  A1 24          lda     (WOZ_XAML,x)        ; Get data byte at 'examine index'
-0000BFr 2  20 rr rr       jsr     WOZ_PRBYTE          ; Output it in hex format
-0000C2r 2               WOZ_XAMNEXT:
+0000BFr 2  20 rr rr       jsr     WozPrbyte           ; Output it in hex format
+0000C2r 2               WozXamnext:
 0000C2r 2  86 2B          stx     WOZ_MODE            ; 0 -> MODE (XAM mode)
 0000C4r 2  A5 24          lda     WOZ_XAML
 0000C6r 2  C5 28          cmp     WOZ_L               ; Compare 'examine index' to hex data
 0000C8r 2  A5 25          lda     WOZ_XAMH
 0000CAr 2  E5 29          sbc     WOZ_H
-0000CCr 2  B0 B6          bcs     WOZ_TONEXTITEM      ; Not less, so no more data to output
+0000CCr 2  B0 B6          bcs     WozTonextitem       ; Not less, so no more data to output
 0000CEr 2               
 0000CEr 2  E6 24          inc     WOZ_XAML
-0000D0r 2  D0 02          bne     WOZ_MOD8CHK         ; Increment 'examine index'
+0000D0r 2  D0 02          bne     WozMod8chk          ; Increment 'examine index'
 0000D2r 2  E6 25          inc     WOZ_XAMH
 0000D4r 2               
-0000D4r 2               WOZ_MOD8CHK:
+0000D4r 2               WozMod8chk:
 0000D4r 2  A5 24          lda     WOZ_XAML            ; Check low-order 'examine index' byte
 0000D6r 2  29 07          and     #$07                ; For MOD 8 = 0
-0000D8r 2  10 C3          bpl     WOZ_NXTPRNT         ; Always taken
+0000D8r 2  10 C3          bpl     WozNxtprnt          ; Always taken
 0000DAr 2               
-0000DAr 2               WOZ_PRBYTE:
+0000DAr 2               WozPrbyte:
 0000DAr 2  48             pha                         ; Save A for LSD
 0000DBr 2  4A             lsr
 0000DCr 2  4A             lsr
 0000DDr 2  4A             lsr                         ; MSD to LSD position
 0000DEr 2  4A             lsr
-0000DFr 2  20 rr rr       jsr     WOZ_PRHEX           ; Output hex digit
+0000DFr 2  20 rr rr       jsr     WozPrhex            ; Output hex digit
 0000E2r 2  68             pla                         ; Restore A
 0000E3r 2               
-0000E3r 2               WOZ_PRHEX:
+0000E3r 2               WozPrhex:
 0000E3r 2  29 0F          and     #$0F                ; Mask LSD for hex print
 0000E5r 2  09 30          ora     #$30                ; Add "0"
 0000E7r 2  C9 3A          cmp     #$3A                ; Digit?
-0000E9r 2  90 02          bcc     WOZ_ECHO            ; Yes, output it
+0000E9r 2  90 02          bcc     WozEcho             ; Yes, output it
 0000EBr 2  69 06          adc     #$06                ; Add offset for letter
 0000EDr 2               
-0000EDr 2               WOZ_ECHO:
-0000EDr 2  20 rr rr       jsr CHROUT                  ; Output the character
+0000EDr 2               WozEcho:
+0000EDr 2  20 rr rr       jsr Chrout                  ; Output the character
 0000F0r 2  60             rts                         ; Return
 0000F1r 2               
 0000F1r 1               .segment "VECTORS"
@@ -815,8 +815,8 @@ Current file: BIOS.asm
 000000r 2               ; ***   VECTORS   ***
 000000r 2               ; ***             ***
 000000r 2               
-000000r 2  rr rr        .word   NMI_VEC           ; NMI vector
-000002r 2  rr rr        .word   RESET_VEC         ; RESET vector
-000004r 2  rr rr        .word   IRQ_VEC           ; IRQ vector
+000000r 2  rr rr        .word   NmiVec           ; NMI vector
+000002r 2  rr rr        .word   ResetVec         ; RESET vector
+000004r 2  rr rr        .word   IrqVec           ; IRQ vector
 000006r 2               
 000006r 1               
